@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlencode
+import base64
 
 import jinja2
 import numpy
@@ -105,6 +106,7 @@ class wmsExtension(FactoryExtension):
                             "enum": [
                                 "GetCapabilities",
                                 "GetMap",
+                                "GetFeatureInfo",
                             ],
                         },
                         "name": "REQUEST",
@@ -148,6 +150,7 @@ class wmsExtension(FactoryExtension):
                             "title": "Output format of service metadata/map",
                             "type": "string",
                             "enum": [
+                                "text/html",
                                 "application/xml",
                                 "image/png",
                                 "image/jpeg",
@@ -175,6 +178,24 @@ class wmsExtension(FactoryExtension):
                             "type": "string",
                         },
                         "name": "CRS",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Bounding box corners (lower left, upper right) in CRS units.",
+                            "type": "string",
+                        },
+                        "name": "",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Bounding box corners (lower left, upper right) in CRS units.",
+                            "type": "string",
+                        },
+                        "name": "BBOX",
                         "in": "query",
                     },
                     {
@@ -297,7 +318,10 @@ class wmsExtension(FactoryExtension):
                     status_code=400, detail="Missing WMS 'REQUEST' parameter."
                 )
 
-            inlayers = req.get("layers")
+            # layers must be base64 encoded
+            layers = base64.b64decode(req['layers']).decode('utf-8')
+            inlayers = layers #req.get("layers")
+            layers=Depends(factory.path_dependency),
             if inlayers is None:
                 raise HTTPException(
                     status_code=400, detail="Missing WMS 'LAYERS' parameter."
@@ -362,15 +386,17 @@ class wmsExtension(FactoryExtension):
                 # Grab information from each layer provided
                 layers_dict: Dict[str, Any] = {}
                 for layer in layers:
-                    layers_dict[layer] = {}
+                    layer_encoded = base64.b64encode(layer.encode()).decode('utf-8')
+                    layers_dict[layer_encoded] = {}
+                    layers_dict[layer_encoded]['title'] = layer
                     with rasterio.Env(**env):
                         with factory.reader(layer, **reader_params) as src_dst:
-                            layers_dict[layer]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
-                            layers_dict[layer]["bounds"] = src_dst.bounds
-                            layers_dict[layer][
+                            layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
+                            layers_dict[layer_encoded]["bounds"] = src_dst.bounds
+                            layers_dict[layer_encoded][
                                 "bounds_wgs84"
                             ] = src_dst.geographic_bounds
-                            layers_dict[layer][
+                            layers_dict[layer_encoded][
                                 "abstract"
                             ] = src_dst.info().model_dump_json()
 
@@ -398,7 +424,7 @@ class wmsExtension(FactoryExtension):
                 )
 
             # GetMap: Return an image chip
-            if request_type.lower() == "getmap":
+            def get_map_data(req):
                 # Required parameters:
                 # - VERSION
                 # - REQUEST=GetMap,
@@ -518,6 +544,12 @@ class wmsExtension(FactoryExtension):
                 if post_process:
                     image = post_process(image)
 
+                return image, format, transparent
+
+            if request_type.lower() == "getmap":
+
+                image, format, transparent = get_map_data(req)
+
                 if rescale:
                     image.rescale(rescale)
 
@@ -536,7 +568,56 @@ class wmsExtension(FactoryExtension):
                 return Response(content, media_type=format.mediatype)
 
             elif request_type.lower() == "getfeatureinfo":
-                return Response("Not Implemented", 400)
+                # Required parameters:
+                # - VERSION
+                # - REQUEST=GetFeatureInfo
+                # - LAYERS
+                # - CRS or SRS
+                # - WIDTH
+                # - HEIGHT
+                # - QUERY_LAYERS
+                # - I (Pixel column)
+                # - J (Pixel row)
+                # Optional parameters: INFO_FORMAT, FEATURE_COUNT, ...
+
+                req_keys = {
+                    "version",
+                    "request",
+                    "layers",
+                    "width",
+                    "height",
+                    "query_layers",
+                    "i",
+                    "j",
+                }
+               
+                i = int(req['i'])
+                j = int(req['j'])
+                image, format, transparent = get_map_data(req)
+
+                # Convert the sample value to XML
+                html_content = f"{image.data[0, j, i]}\n"
+                #if rescale:
+                #    image.rescale(rescale)
+#
+#                if color_formula:
+#                    image.apply_color_formula(color_formula)
+#
+#                if colormap:
+#                    image = image.apply_colormap(colormap)
+#
+#                content = image.render(
+#                    img_format=format.driver,
+#                    add_mask=transparent,
+#                    **format.profile,
+#                )
+##
+#                return Response(content, media_type=format.mediatype)
+
+
+                return Response(html_content, media_type="text/html")
+            #elif request_type.lower() == "getfeatureinfo":
+            #    return Response("Not Implemented", 400)
 
             else:
                 raise HTTPException(

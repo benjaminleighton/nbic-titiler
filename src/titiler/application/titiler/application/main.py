@@ -1,9 +1,10 @@
 """titiler app."""
+import uvicorn
 
 import logging
-
+import base64
 import jinja2
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from rio_tiler.io import STACReader
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -30,6 +31,7 @@ from titiler.extensions import (
     cogValidateExtension,
     cogViewerExtension,
     stacExtension,
+    wmsExtension,
     stacViewerExtension,
 )
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
@@ -39,10 +41,14 @@ logging.getLogger("botocore.credentials").disabled = True
 logging.getLogger("botocore.utils").disabled = True
 logging.getLogger("rio-tiler").setLevel(logging.ERROR)
 
+if __name__ == "__main__":
+        __package__='titiler.application'
+
 templates = Jinja2Templates(
     directory="",
     loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
 )  # type:ignore
+
 
 
 api_settings = ApiSettings()
@@ -74,6 +80,7 @@ if not api_settings.disable_cog:
             cogValidateExtension(),
             cogViewerExtension(),
             stacExtension(),
+            wmsExtension(),
         ],
     )
 
@@ -231,3 +238,5 @@ def landing(request: Request):
             "urlparams": str(request.url.query),
         },
     )
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
