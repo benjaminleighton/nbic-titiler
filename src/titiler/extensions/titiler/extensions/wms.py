@@ -445,7 +445,6 @@ class wmsExtension(FactoryExtension):
                     "bbox",
                     "width",
                     "height",
-                    "format",
                 }
 
                 intrs = set(req.keys()).intersection(req_keys)
@@ -513,12 +512,14 @@ class wmsExtension(FactoryExtension):
                             detail=f"Invalid 'TRANSPARENT' parameter: {transparent}. Should be one of ['FALSE', 'TRUE'].",
                         )
 
-                if req["format"] not in self.supported_format:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
-                    )
-                format = ImageType(WMSMediaType(req["format"]).name)
+                format = 'None'
+                if 'format' in req:
+                    if req["format"] not in self.supported_format:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Invalid 'FORMAT' parameter: {req['format']}. Should be one of {self.supported_format}.",
+                        )
+                    format = ImageType(WMSMediaType(req["format"]).name)
 
                 height, width = int(req["height"]), int(req["width"])
 
@@ -541,14 +542,15 @@ class wmsExtension(FactoryExtension):
                     pixel_selection=OverlayMethod(),
                 )
 
-                if post_process:
-                    image = post_process(image)
 
                 return image, format, transparent
 
             if request_type.lower() == "getmap":
 
                 image, format, transparent = get_map_data(req)
+                
+                if post_process:
+                    image = post_process(image)
 
                 if rescale:
                     image.rescale(rescale)
