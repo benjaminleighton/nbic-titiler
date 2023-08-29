@@ -391,10 +391,7 @@ class wmsExtension(FactoryExtension):
                     layers_dict[layer_encoded]['title'] = layer
                     with rasterio.Env(**env):
                         with factory.reader(layer, **reader_params) as src_dst:
-                            if src_dst.crs is None:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:4326"
-                            else:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
+                            layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
                             layers_dict[layer_encoded]["bounds"] = src_dst.bounds
                             layers_dict[layer_encoded][
                                 "bounds_wgs84"

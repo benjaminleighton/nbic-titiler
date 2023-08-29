@@ -1,6 +1,6 @@
 [project]
-name = "titiler.application"
-description = "A modern dynamic tile server built on top of FastAPI and Rasterio/GDAL."
+name = "titiler.extensions"
+description = "Extensions for TiTiler Factories."
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [
@@ -29,11 +29,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-    "titiler.core==0.13.0",
-    #"titiler.extensions[cogeo,stac]==0.13.0",
-    "titiler.mosaic==0.13.0",
-    "starlette-cramjam>=0.3,<0.4",
-    "pydantic-settings~=2.0",
+    "titiler.core==0.13.0"
 ]
 
 [project.optional-dependencies]
@@ -42,11 +38,13 @@ test = [
     "pytest-cov",
     "pytest-asyncio",
     "httpx",
-    "brotlipy",
-    "boto3",
+    "jsonschema>=3.0,<4.18.0",
 ]
-server = [
-    "uvicorn[standard]>=0.12.0,<0.19.0",
+cogeo = [
+    "rio-cogeo>=5.0,<6.0",
+]
+stac = [
+    "rio-stac>=0.8,<0.9",
 ]
 
 [project.urls]
@@ -62,8 +60,8 @@ build-backend = "pdm.pep517.api"
 
 [tool.pdm.version]
 source = "file"
-path = "titiler/application/__init__.py"
+path = "titiler/extensions/__init__.py"
 
 [tool.pdm.build]
-includes = ["titiler/application"]
+includes = ["titiler/extensions"]
 excludes = ["tests/", "**/.mypy_cache", "**/.DS_Store"]
