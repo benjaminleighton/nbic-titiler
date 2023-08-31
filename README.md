@@ -26,6 +26,10 @@
 
 ---
 
+This fork adds additional functionality to the WMS extension with the hope it can be gathered into a suitable pull request for incorporation into the WMS Titiler extension. Added is basic support for GetFeatureInfo and a requirement that LAYER urls be base64 encoded.   
+
+---
+
 **Documentation**: <a href="https://devseed.com/titiler/" target="_blank">https://devseed.com/titiler/</a>
 
 **Source Code**: <a href="https://github.com/developmentseed/titiler" target="_blank">https://github.com/developmentseed/titiler</a>
