@@ -1,5 +1,5 @@
 """titiler app."""
-import uvicorn
+#import uvicorn
 
 import logging
 import base64
@@ -238,5 +238,5 @@ def landing(request: Request):
             "urlparams": str(request.url.query),
         },
     )
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+#if __name__ == "__main__":
+#    uvicorn.run(app, host="0.0.0.0", port=8000)

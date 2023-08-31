@@ -1,6 +1,7 @@
 """Construct App."""
 
 import os
+import shutil
 from typing import Any, Dict, List, Optional, Union
 
 from aws_cdk import App, CfnOutput, Duration, Stack, Tags
@@ -12,6 +13,7 @@ from aws_cdk import aws_iam as iam
 from aws_cdk import aws_lambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_apigatewayv2_integrations_alpha import HttpLambdaIntegration
+from aws_cdk import aws_wafv2 as wafv2
 from config import StackSettings
 from constructs import Construct
 
@@ -46,6 +48,21 @@ class titilerLambdaStack(Stack):
 
         permissions = permissions or []
         environment = environment or {}
+       
+        lambda_dockerfile = 'lambda/Dockerfile'
+        install_type = "prod"
+
+        if os.environ.get("TITILER_STACK_DEV_MODE") == "true":
+            src_dir = "../../src/titiler"
+            destination = os.path.join(code_dir, "titiler")
+            # Remove destination directory if it exists
+            if os.path.exists(destination):
+                shutil.rmtree(destination) 
+            # Copy the directory
+            shutil.copytree(src_dir, destination)
+            lambda_dockerfile = 'lambda/Dockerfile'
+            install_type = "dev"
+
 
         lambda_function = aws_lambda.Function(
             self,
@@ -53,7 +70,10 @@ class titilerLambdaStack(Stack):
             runtime=runtime,
             code=aws_lambda.Code.from_docker_build(
                 path=os.path.abspath(code_dir),
-                file="lambda/Dockerfile",
+                file=lambda_dockerfile,
+                build_args={
+                    "INSTALL_TYPE": "dev"
+                }
             ),
             handler="handler.handler",
             memory_size=memory,
@@ -74,6 +94,11 @@ class titilerLambdaStack(Stack):
             ),
         )
         CfnOutput(self, "Endpoint", value=api.url)
+        
+        if os.environ.get("TITILER_STACK_DEV_MODE") == "true":
+            # Remove destination directory if it exists
+            if os.path.exists(destination):
+                shutil.rmtree(destination) 
 
 
 class titilerECSStack(Stack):
