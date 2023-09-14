@@ -5,6 +5,13 @@ from enum import Enum
 from typing import Any, Dict, List
 from urllib.parse import urlencode
 import base64
+import json
+from io import BytesIO
+
+
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib.patches import Patch
 
 import jinja2
 import numpy
@@ -75,6 +82,7 @@ class wmsExtension(FactoryExtension):
         default_factory=lambda: ["1.0.0", "1.1.1", "1.3.0"]
     )
     templates: Jinja2Templates = DEFAULT_TEMPLATES
+    user = "Alessio"
 
     def register(self, factory: BaseTilerFactory):  # noqa: C901
         """Register endpoint to the tiler factory."""
@@ -107,6 +115,7 @@ class wmsExtension(FactoryExtension):
                                 "GetCapabilities",
                                 "GetMap",
                                 "GetFeatureInfo",
+                                "GetLegendGraphic"
                             ],
                         },
                         "name": "REQUEST",
@@ -187,15 +196,6 @@ class wmsExtension(FactoryExtension):
                             "type": "string",
                         },
                         "name": "",
-                        "in": "query",
-                    },
-                    {
-                        "required": False,
-                        "schema": {
-                            "title": "Bounding box corners (lower left, upper right) in CRS units.",
-                            "type": "string",
-                        },
-                        "name": "BBOX",
                         "in": "query",
                     },
                     {
@@ -313,113 +313,33 @@ class wmsExtension(FactoryExtension):
                 )
 
             # layers must be base64 encoded
-            layers = base64.b64decode(req['layers']).decode('utf-8')
-            inlayers = layers #req.get("layers")
-            layers=Depends(factory.path_dependency),
-            if inlayers is None:
-                raise HTTPException(
-                    status_code=400, detail="Missing WMS 'LAYERS' parameter."
-                )
-
-            layers = list(inlayers.split(","))
-            if not layers or not inlayers:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid 'LAYERS' parameter: {inlayers}.",
-                )
-
-            # GetCapabilities: Return a WMS XML
-            if request_type.lower() == "getcapabilities":
-                # Required parameters:
-                # - SERVICE=WMS
-                # - REQUEST=GetCapabilities
-                # Optional parameters: VERSION, FORMAT, UPDATESEQUENCE
-
-                # List of required parameters (layers is added for titiler)
-                req_keys = {"service", "request", "layers"}
-
-                intrs = set(req.keys()).intersection(req_keys)
-                missing_keys = req_keys.difference(intrs)
-                if len(missing_keys) > 0:
+            if 'layers' in req:
+                try:
+                    layers = base64.b64decode(req['layers']).decode('utf-8')
+                except:
+                    layers = req['layers']#.decode('utf-8')
+            elif 'layer' in req:
+                try:
+                    layers = base64.b64decode(req['layer']).decode('utf-8')
+                except:
+                    layers = req['layer']#.decode('utf-8')
+            else:
+                layers = ''
+            
+            if request_type != 'GetLegendGraphic':
+                inlayers = layers #req.get("layers")
+                layers=Depends(factory.path_dependency),
+                if inlayers is None:
                     raise HTTPException(
-                        status_code=400,
-                        detail=f"Missing 'GetCapabilities' parameters: {missing_keys}",
+                        status_code=400, detail="Missing WMS 'LAYERS' parameter."
                     )
 
-                if not req["service"].lower() == "wms":
+                layers = list(inlayers.split(","))
+                if not layers or not inlayers:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Invalid 'SERVICE' parameter: {req['service']}. Only 'wms' is accepted",
+                        detail=f"Invalid 'LAYERS' parameter: {inlayers}.",
                     )
-
-                version = req.get("version", "1.3.0")
-                if version not in self.supported_version:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid 'VERSION' parameter: {version}. Allowed versions include: {self.supported_version}",
-                    )
-
-                wms_url = factory.url_for(request, "wms")
-
-                qs_key_to_remove = [
-                    "service",
-                    "request",
-                    "layers",
-                    "version",
-                    "format",
-                    "updatesequence",
-                ]
-                qs = [
-                    (key, value)
-                    for (key, value) in request.query_params._list
-                    if key.lower() not in qs_key_to_remove
-                ]
-                if qs:
-                    wms_url += f"?{urlencode(qs)}"
-
-                # Grab information from each layer provided
-                layers_dict: Dict[str, Any] = {}
-                for layer in layers:
-                    layer_encoded = base64.b64encode(layer.encode()).decode('utf-8')
-                    layers_dict[layer_encoded] = {}
-                    layers_dict[layer_encoded]['title'] = layer
-                    with rasterio.Env(**env):
-                        with factory.reader(layer, **reader_params) as src_dst:
-                            if src_dst.crs is None:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:4326"
-                            else:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
-                            layers_dict[layer_encoded]["bounds"] = src_dst.bounds
-                            layers_dict[layer_encoded][
-                                "bounds_wgs84"
-                            ] = src_dst.geographic_bounds
-                            layers_dict[layer_encoded][
-                                "abstract"
-                            ] = src_dst.info().model_dump_json()
-
-                # Build information for the whole service
-                minx, miny, maxx, maxy = zip(
-                    *[layers_dict[layer]["bounds_wgs84"] for layer in layers_dict]
-                )
-
-                return self.templates.TemplateResponse(
-                    f"wms_{version}.xml",
-                    {
-                        "request": request,
-                        "request_url": wms_url,
-                        "formats": self.supported_format,
-                        "available_epsgs": self.supported_crs,
-                        "layers_dict": layers_dict,
-                        "service_dict": {
-                            "xmin": min(minx),
-                            "ymin": min(miny),
-                            "xmax": max(maxx),
-                            "ymax": max(maxy),
-                        },
-                    },
-                    media_type=MediaType.xml.value,
-                )
-
             # GetMap: Return an image chip
             def get_map_data(req):
                 # Required parameters:
@@ -542,10 +462,224 @@ class wmsExtension(FactoryExtension):
 
                 return image, format, transparent
 
-            if request_type.lower() == "getmap":
+            def render_legend(colormap, labels, legend_type, rescale=(0,1), width=1.5, height=10):
+
+                # get the initial settings
+                # conversion from cm to inches
+                width /= 2.54
+                height /= 2.54
+                dpi = 300
+                bbox_fig = "tight"
+
+                # initialise the canvas
+                fig = plt.figure(
+                    figsize = (width, height),
+                    dpi=dpi,
+                )
+                ax = fig.add_subplot()
+                # this is the memory buffer used to save the rendered image
+                buf = BytesIO()
+
+
+                if legend_type == 'linear':
+                    # generate a linear colormap from the {value: rgba_code} dictionary
+                    if not isinstance(rescale, list) or not isinstance(rescale[0], tuple) or len(rescale[0]) != 2:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Linear colormap legends require the use of a valid rescale parameter (e.g. [(1.0, 2.0)]). {rescale} was provided",
+                        )
+
+                    cmap = mpl.colors.LinearSegmentedColormap.from_list(
+                        'custom',
+                        [(k/255, [c/255 for c in rgba]) for (k, rgba) in colormap.items()],
+                        256,
+                    )
+                    norm = mpl.colors.Normalize(vmin=rescale[0][0], vmax=rescale[0][1])
+                    # this will create a colorbar in the axis, normalised between min/max
+                    cb = mpl.colorbar.ColorbarBase(
+                        ax, 
+                        cmap=cmap,
+                        norm=norm,
+                        orientation='vertical'
+                    )
+
+                elif legend_type == 'interval':
+                    # generate a interval colormap, like the one for contourf
+                    bounds = []
+                    colors = []
+                    # this time we should receive a sequence [(min_interval, max_interval), rgba_code]
+                    for b, c in colormap:
+                        bounds.append(b[0])
+                        colors.append([val/255 for val in c])
+                    # remember to close the last interval
+                    bounds.append(b[1])
+
+                    cmap = mpl.colors.ListedColormap(colors)
+                    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+                    cb = mpl.colorbar.ColorbarBase(ax, 
+                        cmap=cmap,
+                        norm=norm,
+                        boundaries=bounds,
+                        ticks=bounds,
+                        # spacing='proportional',
+                        orientation='vertical'
+                    )
+
+                elif legend_type == 'discrete':
+
+                    # generate a dictionary of {rgba_values: values_or_labels}
+                    legend_table = {}
+
+                    # as lists are mutable objects, they cannot be used as keys. 
+                    # To fix that we convert them to strings, but remove the [] to easily reconvert them later to lists
+
+                    for k, v in colormap.items():
+                        try:
+                            # try to retrieve the label
+                            lbl = labels[k]
+                        except KeyError:
+                            # if not there fall back to value
+                            lbl = str(k)
+                        try:
+                            # now store the label_or_value associated with the color code.
+                            # if that color is used for multiple values, we already seen it
+                            legend_table[str(v)[1:-1]] = legend_table[str(v)[1:-1]] + ', ' + lbl
+                        except KeyError:
+                            legend_table[str(v)[1:-1]] = lbl
+
+                    # create the list of patches to render
+                    legend_elements = []
+                    for col, lbl in legend_table.items():
+
+                        # the rgba color is reconverted to list using the str split function
+                        legend_elements.append(Patch(facecolor=[int(c)/255 for c in col.split(', ')], edgecolor='k',
+                                            label=lbl.capitalize()))
+
+                    # render the legend
+                    legend = ax.legend(handles=legend_elements, loc='center')
+                    # remove the axis that is automatically added
+                    plt.gca().set_axis_off()
+                    # draw the canvas
+                    fig.canvas.draw()
+                    # now find the boundix box of the legend, so that we can remove the empty space
+                    bbox_fig = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Could not understand the legend_type {legend_type}.",
+                    )
+                
+                # save the colorbar/legend as a png figure.
+                # this is done in-memory
+                fig.savefig(buf, dpi="figure", format='png', bbox_inches=bbox_fig, transparent=True)
+                # reset the buffer pointer to the first location (is it needed?)
+                buf.seek(0)
+                # re-read the buffer and close it
+                out = buf.read()
+                buf.close()
+                # return the buffer values
+                return out
+
+            # GetCapabilities: Return a WMS XML
+            if request_type.lower() == "getcapabilities":
+                # Required parameters:
+                # - SERVICE=WMS
+                # - REQUEST=GetCapabilities
+                # Optional parameters: VERSION, FORMAT, UPDATESEQUENCE
+
+                # List of required parameters (layers is added for titiler)
+                req_keys = {"service", "request", "layers"}
+
+                intrs = set(req.keys()).intersection(req_keys)
+                missing_keys = req_keys.difference(intrs)
+                if len(missing_keys) > 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Missing 'GetCapabilities' parameters: {missing_keys}",
+                    )
+
+                if not req["service"].lower() == "wms":
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid 'SERVICE' parameter: {req['service']}. Only 'wms' is accepted",
+                    )
+
+                version = req.get("version", "1.3.0")
+                if version not in self.supported_version:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid 'VERSION' parameter: {version}. Allowed versions include: {self.supported_version}",
+                    )
+
+                wms_url = factory.url_for(request, "wms")
+
+                qs_key_to_remove = [
+                    "service",
+                    "request",
+                    "layers",
+                    "version",
+                    "format",
+                    "updatesequence",
+                ]
+                qs = [
+                    (key, value)
+                    for (key, value) in request.query_params._list
+                    if key.lower() not in qs_key_to_remove
+                ]
+                if qs:
+                    wms_url += f"?{urlencode(qs)}"
+
+                # Grab information from each layer provided
+                layers_dict: Dict[str, Any] = {}
+                for layer in layers:
+                    layer_encoded = base64.b64encode(layer.encode()).decode('utf-8')
+                    layers_dict[layer_encoded] = {}
+                    title = layer.split('?')[0].split('/')[-1]
+                    layers_dict[layer_encoded]['title'] = title
+                    with rasterio.Env(**env):
+                        with factory.reader(layer, **reader_params) as src_dst:
+                            if src_dst.crs is None:
+                                layers_dict[layer_encoded]["srs"] = f"EPSG:4326"
+                            else:
+                                layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
+                            layers_dict[layer_encoded]["bounds"] = src_dst.bounds
+                            layers_dict[layer_encoded][
+                                "bounds_wgs84"
+                            ] = src_dst.geographic_bounds
+                            layers_dict[layer_encoded][
+                                "abstract"
+                            ] = src_dst.info().model_dump_json()
+
+                # Build information for the whole service
+                minx, miny, maxx, maxy = zip(
+                    *[layers_dict[layer]["bounds_wgs84"] for layer in layers_dict]
+                )
+
+                legend_url = wms_url + '&REQUEST=GetLegendGraphic'
+
+                return self.templates.TemplateResponse(
+                    f"wms_{version}.xml",
+                    {
+                        "request": request,
+                        "request_url": wms_url,
+                        "legend_url":legend_url,
+                        "formats": self.supported_format,
+                        "available_epsgs": self.supported_crs,
+                        "layers_dict": layers_dict,
+                        "service_dict": {
+                            "xmin": min(minx),
+                            "ymin": min(miny),
+                            "xmax": max(maxx),
+                            "ymax": max(maxy),
+                        },
+                    },
+                    media_type=MediaType.xml.value,
+                )
+            elif request_type.lower() == "getmap":
 
                 image, format, transparent = get_map_data(req)
-                
+
                 if post_process:
                     image = post_process(image)
 
@@ -555,8 +689,8 @@ class wmsExtension(FactoryExtension):
                 if color_formula:
                     image.apply_color_formula(color_formula)
 
-                if colormap:
-                    image = image.apply_colormap(colormap)
+                # if colormap:
+                #     image = image.apply_colormap(colormap)
 
                 content, media_type = render_image(
                     image,
@@ -565,7 +699,6 @@ class wmsExtension(FactoryExtension):
                     add_mask=transparent,
                 )
                 return Response(content, media_type=media_type)
-
             elif request_type.lower() == "getfeatureinfo":
                 # Required parameters:
                 # - VERSION
@@ -615,11 +748,44 @@ class wmsExtension(FactoryExtension):
 
 
                 return Response(html_content, media_type="text/html")
-            #elif request_type.lower() == "getfeatureinfo":
-            #    return Response("Not Implemented", 400)
+            elif request_type.lower() == "getlegendgraphic":
+                if not colormap:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"REQUEST {request_type} cannot be fulfilled as no colormap information was specified",
+                    )
+                
+                # load the labels if passed
+                # labels = json.loads(req.get('colormap_labels', '{}'), object_hook=lambda x: {float(k): v for k, v in x.items()})
+                try:
+                    labels = json.loads(req.get('colormap_labels', '{}'))
+                except json.JSONDecodeError:
+                    raise HTTPException(
+                        status_code=400, detail="Could not parse the colormap label value."
+                    )
+
+                if isinstance(labels, list):
+                    labels = {float(k):v for (k, v) in labels}
+                elif isinstance(labels, dict):
+                    labels = {float(k):v for k, v in labels.items()}
+                else:
+                    raise HTTPException(
+                        status_code=400, detail="colormap_label parameter is malformed. Expected {value:label} or [[value, label]]"
+                    )
+
+                # if a colormap name has been passed, that will be used to create a linear colorbar legend
+                has_colormap_name = bool(req.get('colormap_name', False))
+                if has_colormap_name:
+                    legend_type = 'linear'
+                else:
+                    legend_type = req.get('colormap_type', 'linear')
+
+                legend = render_legend(colormap, labels, legend_type, rescale=rescale, width=req.get("width", 1.5), height=req.get("height", 10))
+
+                return Response(legend, media_type='image/png')
 
             else:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid 'REQUEST' parameter: {request_type}. Should be one of ['GetCapabilities', 'GetMap'].",
+                    detail=f"Invalid 'REQUEST' parameter: {request_type}. Should be one of ['GetCapabilities', 'GetMap', 'GetFeatureInfo', 'GetLegendGraphic'].",
                 )

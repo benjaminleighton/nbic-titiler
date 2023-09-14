@@ -38,6 +38,15 @@
         </HTTP>
       </DCPType>
     </GetMap>
+    <!-- <GetLegendGraphic>
+      <Format>image/png</Format>
+      <DCPType>
+        <HTTP>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Post>
+        </HTTP>
+      </DCPType>
+    </GetLegendGraphic> -->
   </Request>
   <Exception>
     <Format>XML</Format>
@@ -63,7 +72,16 @@
     
     <BoundingBox CRS="CRS:84" minx="{{service_dict['ymin']}}" miny="{{service_dict['xmin']}}" maxx="{{service_dict['ymax']}}" maxy="{{service_dict['xmax']}}" />
     <BoundingBox CRS="EPSG:4326" minx="{{service_dict['xmin']}}" miny="{{service_dict['ymin']}}" maxx="{{service_dict['xmax']}}" maxy="{{service_dict['ymax']}}" />
-    
+    <Style>
+      <Name>default</Name>
+      <Title>default</Title>
+      <LegendURL width="300" height="500">
+        <Format>image/png</Format>
+        <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
+         xlink:type="simple"
+         xlink:href="{{ legend_url }}" />
+      </LegendURL>
+    </Style>
     {% for layer in layers_dict.keys() %}
     <Layer queryable="1" opaque="0" cascaded="0">
         <Name>{{layer}}</Name>

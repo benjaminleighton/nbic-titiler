@@ -1,5 +1,5 @@
 """titiler app."""
-#import uvicorn
+import uvicorn
 
 import logging
 import base64
@@ -36,6 +36,8 @@ from titiler.extensions import (
 )
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.mosaic.factory import MosaicTilerFactory
+
+from dependencies import ColorMapParams
 
 logging.getLogger("botocore.credentials").disabled = True
 logging.getLogger("botocore.utils").disabled = True
@@ -75,6 +77,7 @@ app = FastAPI(
 # Simple Dataset endpoints (e.g Cloud Optimized GeoTIFF)
 if not api_settings.disable_cog:
     cog = TilerFactory(
+        colormap_dependency=ColorMapParams,
         router_prefix="/cog",
         extensions=[
             cogValidateExtension(),
@@ -238,5 +241,5 @@ def landing(request: Request):
             "urlparams": str(request.url.query),
         },
     )
-#if __name__ == "__main__":
-#    uvicorn.run(app, host="0.0.0.0", port=8000)
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
