@@ -30,7 +30,7 @@ def ColorMapParams(
     colormap_name: ColorMapName = Query(None, description="Colormap name"),
     colormap: str = Query(None, description="JSON encoded {value:color} or [[value, color]] mapping. For linear type values will be interpolated, for interval type values will be consider the start of the interval"),
     colormap_type: ColorMapType = Query(ColorMapType.linear, description="User input colormap type (used only with custom Colormap)"),
-    colormap_labels: Annotated[Optional[str], Query(description="JSON encoded {value:label} or [[value, label]] mapping (used for discrete Colormap)")] = None
+    colormap_labels: Annotated[Optional[str], Query(description="JSON encoded {value:label} or [[value, label]] mapping (for discrete Colormap), or a single label as string (for linear and interval Colormap)")] = None
 ) -> Optional[Union[Dict, Sequence]]:
     """Colormap Dependency."""
     if colormap_name:

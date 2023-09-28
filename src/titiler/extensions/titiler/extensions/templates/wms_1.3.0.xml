@@ -59,6 +59,7 @@
     <Title>TiTiler WMS</Title>
     <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
     
+    <CRS>{{dataset_crs}}</CRS>
     {% for crs in available_epsgs %}
     <CRS>{{crs}}</CRS>
     {% endfor %}
@@ -78,7 +79,7 @@
       <LegendURL width="300" height="500">
         <Format>image/png</Format>
         <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
-         xlink:type="simple"
+         xlink:type="http://www.w3.org/1999/xlink"
          xlink:href="{{ legend_url }}" />
       </LegendURL>
     </Style>

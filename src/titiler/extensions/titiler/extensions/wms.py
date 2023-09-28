@@ -107,6 +107,15 @@ class wmsExtension(FactoryExtension):
             openapi_extra={
                 "parameters": [
                     {
+                        "required": False,
+                        "schema": {
+                            "title": "Legend aspect ratio",
+                            "type": "float",
+                        },
+                        "name": "legend_aspect_ratio",
+                        "in": "query",
+                    },
+                    {
                         "required": True,
                         "schema": {
                             "title": "Request name",
@@ -187,15 +196,6 @@ class wmsExtension(FactoryExtension):
                             "type": "string",
                         },
                         "name": "CRS",
-                        "in": "query",
-                    },
-                    {
-                        "required": False,
-                        "schema": {
-                            "title": "Bounding box corners (lower left, upper right) in CRS units.",
-                            "type": "string",
-                        },
-                        "name": "",
                         "in": "query",
                     },
                     {
@@ -462,23 +462,50 @@ class wmsExtension(FactoryExtension):
 
                 return image, format, transparent
 
-            def render_legend(colormap, labels, legend_type, rescale=(0,1), width=1.5, height=10):
+            def render_legend(colormap, labels, legend_type, rescale=(0,1), aspect_ratio=0.15):
 
+                if not aspect_ratio:
+                    # we have not specified a width or height, so we will generate a tight layout legend
+                    # here we use default width/height
+                    bbox_fig = 'tight'
+                else:
+                    # we have specified a width and height, so we will be strict about it
+                    # this means that we need to manually calculate the Bbox
+                    bbox_fig = None
+
+                aspect_ratio = float(aspect_ratio)
                 # get the initial settings
-                # conversion from cm to inches
-                width /= 2.54
-                height /= 2.54
+                # width /= 2.54
+                # height /= 2.54
                 dpi = 300
-                bbox_fig = "tight"
 
                 # initialise the canvas
                 fig = plt.figure(
-                    figsize = (width, height),
+                    figsize = (1.5/2.54, 10/2.54),
                     dpi=dpi,
                 )
                 ax = fig.add_subplot()
                 # this is the memory buffer used to save the rendered image
                 buf = BytesIO()
+
+                def _enforce_aspect_ratio(fig, ax, aspect_ratio):
+                    ox, oy, w, h = ax.get_tightbbox().transformed(fig.dpi_scale_trans.inverted()).bounds
+                    current_aspect_ratio = w/h
+                    wanted_aspect_ratio = aspect_ratio
+                    factor = current_aspect_ratio/wanted_aspect_ratio
+
+                    if factor > 1:
+                        # we need to increase the height
+                        new_h = h * factor
+                        # we also need to offset the y origin to make sure that the empty space is added at the bottom
+                        new_oy = oy - (new_h - h)
+                        new_bbox = (ox, new_oy, w, new_h)
+                    elif factor < 1:
+                        # we need to increase the width
+                        new_bbox = (ox, oy, w/factor, h)
+                    else:
+                        new_bbox = (ox, oy, w, h)
+                    return mpl.transforms.Bbox.from_bounds(*new_bbox)
 
 
                 if legend_type == 'linear':
@@ -502,6 +529,11 @@ class wmsExtension(FactoryExtension):
                         norm=norm,
                         orientation='vertical'
                     )
+                    if labels:
+                        cb.set_label(labels)
+
+                    if not bbox_fig:
+                        bbox_fig = _enforce_aspect_ratio(fig, ax, aspect_ratio).padded(0.1)
 
                 elif legend_type == 'interval':
                     # generate a interval colormap, like the one for contourf
@@ -524,6 +556,11 @@ class wmsExtension(FactoryExtension):
                         # spacing='proportional',
                         orientation='vertical'
                     )
+                    if labels:
+                        cb.set_label(labels)
+                    
+                    if not bbox_fig:
+                        bbox_fig = _enforce_aspect_ratio(fig, ax, aspect_ratio).padded(0.1)
 
                 elif legend_type == 'discrete':
 
@@ -729,23 +766,6 @@ class wmsExtension(FactoryExtension):
 
                 # Convert the sample value to XML
                 html_content = f"{image.data[0, j, i]}\n"
-                #if rescale:
-                #    image.rescale(rescale)
-#
-#                if color_formula:
-#                    image.apply_color_formula(color_formula)
-#
-#                if colormap:
-#                    image = image.apply_colormap(colormap)
-#
-#                content = image.render(
-#                    img_format=format.driver,
-#                    add_mask=transparent,
-#                    **format.profile,
-#                )
-##
-#                return Response(content, media_type=format.mediatype)
-
 
                 return Response(html_content, media_type="text/html")
             elif request_type.lower() == "getlegendgraphic":
@@ -755,24 +775,6 @@ class wmsExtension(FactoryExtension):
                         detail=f"REQUEST {request_type} cannot be fulfilled as no colormap information was specified",
                     )
                 
-                # load the labels if passed
-                # labels = json.loads(req.get('colormap_labels', '{}'), object_hook=lambda x: {float(k): v for k, v in x.items()})
-                try:
-                    labels = json.loads(req.get('colormap_labels', '{}'))
-                except json.JSONDecodeError:
-                    raise HTTPException(
-                        status_code=400, detail="Could not parse the colormap label value."
-                    )
-
-                if isinstance(labels, list):
-                    labels = {float(k):v for (k, v) in labels}
-                elif isinstance(labels, dict):
-                    labels = {float(k):v for k, v in labels.items()}
-                else:
-                    raise HTTPException(
-                        status_code=400, detail="colormap_label parameter is malformed. Expected {value:label} or [[value, label]]"
-                    )
-
                 # if a colormap name has been passed, that will be used to create a linear colorbar legend
                 has_colormap_name = bool(req.get('colormap_name', False))
                 if has_colormap_name:
@@ -780,7 +782,31 @@ class wmsExtension(FactoryExtension):
                 else:
                     legend_type = req.get('colormap_type', 'linear')
 
-                legend = render_legend(colormap, labels, legend_type, rescale=rescale, width=req.get("width", 1.5), height=req.get("height", 10))
+                # parse the labels
+                # if discrete, then labels should be a JSON encoded object
+                if legend_type == 'discrete':
+                    try:
+                        labels = json.loads(req.get('colormap_labels', '{}'))
+                    except json.JSONDecodeError:
+                        raise HTTPException(
+                            status_code=400, detail="Could not parse the colormap label value."
+                    )
+
+                    # the JSON encoded value should return either a {key:value} or [[key, value]]
+                    if isinstance(labels, list):
+                        labels = {float(k):v for (k, v) in labels}
+                    elif isinstance(labels, dict):
+                        labels = {float(k):v for k, v in labels.items()}
+                    else:
+                        raise HTTPException(
+                            status_code=400, detail="colormap_label parameter is malformed. Expected {value:label} or [[value, label]]"
+                        )
+                else:
+                    # otherwise we expect the labels to be the color ramp label
+                    labels = req.get('colormap_labels', '')
+
+                # render the legend
+                legend = render_legend(colormap, labels, legend_type, rescale=rescale, aspect_ratio=req.get("legend_aspect_ratio", False))
 
                 return Response(legend, media_type='image/png')
 
