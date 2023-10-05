@@ -82,7 +82,6 @@ class wmsExtension(FactoryExtension):
         default_factory=lambda: ["1.0.0", "1.1.1", "1.3.0"]
     )
     templates: Jinja2Templates = DEFAULT_TEMPLATES
-    user = "Alessio"
 
     def register(self, factory: BaseTilerFactory):  # noqa: C901
         """Register endpoint to the tiler factory."""
