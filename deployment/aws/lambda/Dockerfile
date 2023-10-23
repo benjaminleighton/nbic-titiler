@@ -12,7 +12,7 @@ ARG INSTALL_TYPE=prod
 RUN echo "INSTALL_TYPE is set to: $INSTALL_TYPE"
 
 RUN if [ "$INSTALL_TYPE" = "dev" ]; then \
-      pip install /tmp/titiler/extensions['wms, cogeo, stac'] /tmp/titiler/application /tmp/titiler/core /tmp/titiler/mosaic "mangum>=0.10.0" -t /asset --no-binary pydantic ; \
+      pip install /tmp/titiler/extensions['wms, cogeo, stac'] /tmp/titiler/application /tmp/titiler/core /tmp/titiler/mosaic "mangum>=0.10.0" uvicorn -t /asset --no-binary pydantic ; \
     else \
       pip install "titiler.application==0.14.0" "mangum>=0.10.0" -t /asset --no-binary pydantic ; \
     fi
@@ -26,4 +26,17 @@ RUN rm -rdf /asset/numpy/doc/ /asset/boto3* /asset/botocore* /asset/bin /asset/g
 
 COPY lambda/handler.py /asset/handler.py
 
-CMD ["echo", "hello world"]
+RUN chmod a+rw /asset/handler.py
+
+RUN rm -rf /tmp/titiler
+
+RUN touch /asset/__init__.py
+RUN chmod a+rw /asset/__init__.py
+# Set the entrypoint to mangum
+
+
+RUN cp -r /asset /var/task/
+ENV PYTHONPATH="${PYTONPATH}:/var/task/asset"
+# Point to the handler function in handler.py
+CMD [ "handler.handler" ]
+#CMD ["echo", "hello world"]

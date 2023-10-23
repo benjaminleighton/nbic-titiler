@@ -14,11 +14,12 @@ from aws_cdk import aws_lambda
 from aws_cdk import aws_logs as logs
 from aws_cdk.aws_apigatewayv2_integrations_alpha import HttpLambdaIntegration
 from aws_cdk import aws_wafv2 as wafv2
+from aws_cdk import aws_ecr, aws_ecr_assets  # <-- Added this import
+import aws_cdk as cdk
 from config import StackSettings
 from constructs import Construct
 
 settings = StackSettings()
-
 
 class titilerLambdaStack(Stack):
     """
@@ -36,7 +37,7 @@ class titilerLambdaStack(Stack):
         id: str,
         memory: int = 1024,
         timeout: int = 30,
-        runtime: aws_lambda.Runtime = aws_lambda.Runtime.PYTHON_3_11,
+        runtime: aws_lambda.Runtime = aws_lambda.Runtime.FROM_IMAGE,
         concurrent: Optional[int] = None,
         permissions: Optional[List[iam.PolicyStatement]] = None,
         environment: Optional[Dict] = None,
@@ -52,6 +53,13 @@ class titilerLambdaStack(Stack):
         lambda_dockerfile = 'lambda/Dockerfile'
         install_type = "prod"
 
+        # Create an ECR repository
+        #ecr_repository = aws_ecr.Repository(
+        #    self, 
+        #    f"{id}-ecr-repo",
+        #    removal_policy=cdk.RemovalPolicy.DESTROY  # Ensures the ECR repository is destroyed when the stack is destroyed
+        #)
+
         if os.environ.get("TITILER_STACK_DEV_MODE") == "true":
             src_dir = "../../src/titiler"
             destination = os.path.join(code_dir, "titiler")
@@ -63,19 +71,29 @@ class titilerLambdaStack(Stack):
             lambda_dockerfile = 'lambda/Dockerfile'
             install_type = "dev"
 
+        # CDK asset to build and push Docker image to ECR
+        docker_image_asset = aws_ecr_assets.DockerImageAsset(
+            self,
+            f"{id}-docker-asset",
+            directory=os.path.abspath(code_dir),
+            file=lambda_dockerfile,
+            build_args={
+                "INSTALL_TYPE": install_type
+            },
+        )
 
+        cdk.CfnOutput(self, "Image URI", value=docker_image_asset.image_uri)
         lambda_function = aws_lambda.Function(
             self,
             f"{id}-lambda",
             runtime=runtime,
-            code=aws_lambda.Code.from_docker_build(
-                path=os.path.abspath(code_dir),
-                file=lambda_dockerfile,
-                build_args={
-                    "INSTALL_TYPE": "dev"
-                }
+            code=aws_lambda.Code.from_ecr_image(
+                repository=docker_image_asset.repository,
+                #tag=docker_image_asset.image_uri.split(':')[-1]  # Use the tag from the DockerImageAsset
+                tag=docker_image_asset.asset_hash
+                #tag=docker_image_asset.image_uri.split(':')[-1].split(':')[-1]
             ),
-            handler="handler.handler",
+            handler=aws_lambda.Handler.FROM_IMAGE,
             memory_size=memory,
             reserved_concurrent_executions=concurrent,
             timeout=Duration.seconds(timeout),
@@ -99,7 +117,6 @@ class titilerLambdaStack(Stack):
             # Remove destination directory if it exists
             if os.path.exists(destination):
                 shutil.rmtree(destination) 
-
 
 class titilerECSStack(Stack):
     """Titiler ECS Fargate Stack."""

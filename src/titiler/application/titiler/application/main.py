@@ -37,7 +37,7 @@ from titiler.extensions import (
 from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.mosaic.factory import MosaicTilerFactory
 
-from dependencies import ColorMapParams
+from titiler.application.dependencies import ColorMapParams
 
 logging.getLogger("botocore.credentials").disabled = True
 logging.getLogger("botocore.utils").disabled = True
