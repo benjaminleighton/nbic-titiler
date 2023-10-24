@@ -48,7 +48,13 @@ def ColorMapParams(
             )
         
         if isinstance(cm, list):
-            cm = {float(k):parse_color(v) for (k, v) in cm}
+            try:
+                cm = {float(k):parse_color(v) for (k, v) in cm}
+            except TypeError:
+                # passed colormap using the old way
+                # this is [[min, max], [RGB values]]
+                # vs [max, [RGB values]]
+                cm = {float(max(k)):parse_color(v) for (k, v) in cm}
         elif isinstance(cm, dict):
             cm = {float(k):parse_color(v) for k, v in cm.items()}
         else:

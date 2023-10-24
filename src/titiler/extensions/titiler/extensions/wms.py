@@ -82,7 +82,6 @@ class wmsExtension(FactoryExtension):
         default_factory=lambda: ["1.0.0", "1.1.1", "1.3.0"]
     )
     templates: Jinja2Templates = DEFAULT_TEMPLATES
-    user = "Alessio"
 
     def register(self, factory: BaseTilerFactory):  # noqa: C901
         """Register endpoint to the tiler factory."""
@@ -542,9 +541,10 @@ class wmsExtension(FactoryExtension):
                     # this time we should receive a sequence [(min_interval, max_interval), rgba_code]
                     for b, c in colormap:
                         bounds.append(b[0])
-                        colors.append([val/255 for val in c])
+                        colors.append([c[0]/255, c[1]/255, c[2]/255] + [1])
                     # remember to close the last interval
                     bounds.append(b[1])
+                    # raise
 
                     cmap = mpl.colors.ListedColormap(colors)
                     norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
