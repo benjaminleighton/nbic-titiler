@@ -539,20 +539,40 @@ class wmsExtension(FactoryExtension):
                     bounds = []
                     colors = []
                     # this time we should receive a sequence [(min_interval, max_interval), rgba_code]
+                    under=None
+                    over=None
                     for b, c in colormap:
-                        bounds.append(b[0])
-                        colors.append([c[0]/255, c[1]/255, c[2]/255] + [1])
+                        if b[0] == float('-inf'):
+                            under = [c[0]/255, c[1]/255, c[2]/255] + [1]
+                        elif b[1] == float("inf"):
+                            over = [c[0]/255, c[1]/255, c[2]/255] + [1]
+                        else:
+                            bounds.append(b[0])
+                            colors.append([c[0]/255, c[1]/255, c[2]/255] + [1])
                     # remember to close the last interval
-                    bounds.append(b[1])
+                    if b[1] == float("inf"):
+                        bounds.append(b[0])
+                    else:
+                        bounds.append(b[1])
                     # raise
 
-                    cmap = mpl.colors.ListedColormap(colors)
+                    if over and under:
+                        extend='both'
+                    elif over:
+                        extend='max'
+                    elif under:
+                        extend='min'
+                    else:
+                        extend='neither'
+
+                    cmap = mpl.colors.ListedColormap(colors).with_extremes(under=under, over=over)
                     norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
                     cb = mpl.colorbar.ColorbarBase(ax, 
                         cmap=cmap,
                         norm=norm,
                         boundaries=bounds,
                         ticks=bounds,
+                        extend=extend,
                         # spacing='proportional',
                         orientation='vertical'
                     )

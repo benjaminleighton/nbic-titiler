@@ -54,7 +54,7 @@ def ColorMapParams(
                 # passed colormap using the old way
                 # this is [[min, max], [RGB values]]
                 # vs [max, [RGB values]]
-                cm = {float(max(k)):parse_color(v) for (k, v) in cm}
+                cm = {float(min(k)):parse_color(v) for (k, v) in cm}
         elif isinstance(cm, dict):
             cm = {float(k):parse_color(v) for k, v in cm.items()}
         else:
@@ -85,6 +85,7 @@ def ColorMapParams(
             cm_out = []
             for k_start, k_end in zip(intervals[:-1], intervals[1:]):
                 cm_out.append(([k_start, k_end], cm[k_start]))
+            cm_out.append(([k_end, float('Inf')], cm[k_end]))
         elif colormap_type == ColorMapType.discrete:
             # for the discrete case, that is a pass-through
             cm_out = cm
