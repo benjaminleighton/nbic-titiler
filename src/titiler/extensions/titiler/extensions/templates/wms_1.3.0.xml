@@ -38,7 +38,7 @@
         </HTTP>
       </DCPType>
     </GetMap>
-    <!-- <GetLegendGraphic>
+    <!--<GetLegendGraphic>
       <Format>image/png</Format>
       <DCPType>
         <HTTP>
@@ -99,6 +99,14 @@
         </EX_GeographicBoundingBox>
         <BoundingBox CRS="CRS:84" minx="{{layers_dict[layer]['bounds_wgs84'][0]}}" miny="{{layers_dict[layer]['bounds_wgs84'][1]}}" maxx="{{layers_dict[layer]['bounds_wgs84'][2]}}" maxy="{{layers_dict[layer]['bounds_wgs84'][3]}}"/>
         <BoundingBox CRS="{{layers_dict[layer]['srs']}}" minx="{{layers_dict[layer]['bounds'][1]}}" miny="{{layers_dict[layer]['bounds'][0]}}" maxx="{{layers_dict[layer]['bounds'][3]}}" maxy="{{layers_dict[layer]['bounds'][2]}}"/>
+        <Style>
+          <LegendURL width="300" height="500">
+            <Format>image/png</Format>
+            <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
+            xlink:type="http://www.w3.org/1999/xlink"
+            xlink:href="{{ legend_url + '&LAYERS=' + layer }}" />
+            </LegendURL>
+        </Style>
     </Layer>
     {% endfor %}
     

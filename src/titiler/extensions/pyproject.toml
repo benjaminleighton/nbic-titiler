@@ -46,6 +46,9 @@ cogeo = [
 stac = [
     "rio-stac>=0.8,<0.9",
 ]
+wms = [
+    "matplotlib",
+]
 
 [project.urls]
 Homepage = "https://developmentseed.org/titiler/"
