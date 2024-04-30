@@ -806,12 +806,13 @@ class wmsExtension(FactoryExtension):
                 # if discrete, then labels should be a JSON encoded object
                 if legend_type == 'discrete':
                     try:
-                        labels = json.loads(req.get('colormap_labels', '{}'))
+                        labels = req.get('colormap_labels', '{}').replace("'", '"')
+                        labels = json.loads(labels)
                     except json.JSONDecodeError:
                         raise HTTPException(
                             status_code=400, detail="Could not parse the colormap label value."
                     )
-
+                    print(labels)
                     # the JSON encoded value should return either a {key:value} or [[key, value]]
                     if isinstance(labels, list):
                         labels = {float(k):v for (k, v) in labels}
