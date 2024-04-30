@@ -37,6 +37,7 @@ def ColorMapParams(
         return cmap.get(colormap_name.value)
 
     if colormap:
+        colormap = colormap.replace("'", '"')
         try:
             cm = json.loads(
                 colormap,
