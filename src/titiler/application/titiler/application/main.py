@@ -46,11 +46,15 @@ logging.getLogger("rio-tiler").setLevel(logging.ERROR)
 if __name__ == "__main__":
         __package__='titiler.application'
 
-templates = Jinja2Templates(
-    directory="",
-    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
-)  # type:ignore
+#templates = Jinja2Templates(
+#    directory="",
+#    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
+#)  # type:ignore
 
+jinja2_env = jinja2.Environment(
+    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")])
+)
+templates = Jinja2Templates(env=jinja2_env)
 
 
 api_settings = ApiSettings()
