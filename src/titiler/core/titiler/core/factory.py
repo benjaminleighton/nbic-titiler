@@ -69,11 +69,17 @@ from titiler.core.resources.responses import GeoJSONResponse, JSONResponse, XMLR
 from titiler.core.routing import EndpointScope
 from titiler.core.utils import render_image
 
-DEFAULT_TEMPLATES = Jinja2Templates(
-    directory="",
-    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
-)  # type:ignore
+#DEFAULT_TEMPLATES = Jinja2Templates(
+#    directory="",
+#    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")]),
+#)  # type:ignore
 
+from titiler.core.utils import render_image
+
+jinja2_env = jinja2.Environment(
+    loader=jinja2.ChoiceLoader([jinja2.PackageLoader(__package__, "templates")])
+)
+DEFAULT_TEMPLATES = Jinja2Templates(env=jinja2_env)
 
 img_endpoint_params: Dict[str, Any] = {
     "responses": {

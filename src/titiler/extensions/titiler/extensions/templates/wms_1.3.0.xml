@@ -13,8 +13,8 @@
       <Format>text/html</Format>
       <DCPType>
         <HTTP>
-          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Get>
-          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Post>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape}}"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Post>
         </HTTP>
       </DCPType>
     </GetFeatureInfo>
@@ -22,8 +22,8 @@
       <Format>text/xml</Format>
       <DCPType>
         <HTTP>
-          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Get>
-          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Post>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape}}"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Post>
         </HTTP>
       </DCPType>
     </GetCapabilities>
@@ -33,8 +33,8 @@
       {% endfor %}
       <DCPType>
         <HTTP>
-          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Get>
-          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Post>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Post>
         </HTTP>
       </DCPType>
     </GetMap>
@@ -42,8 +42,8 @@
       <Format>image/png</Format>
       <DCPType>
         <HTTP>
-          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Get>
-          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url }}"/></Post>
+          <Get><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Get>
+          <Post><OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="{{ request_url|escape }}"/></Post>
         </HTTP>
       </DCPType>
     </GetLegendGraphic> -->
@@ -78,7 +78,7 @@
         <Format>image/png</Format>
         <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
          xlink:type="http://www.w3.org/1999/xlink"
-         xlink:href="{{ legend_url }}" />
+         xlink:href="{{ legend_url|escape }}" />
       </LegendURL>
     </Style>
     {% for layer in layers_dict.keys() %}
@@ -106,7 +106,7 @@
             <Format>image/png</Format>
             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
             xlink:type="http://www.w3.org/1999/xlink"
-            xlink:href="{{ legend_url + '&LAYERS=' + layer }}" />
+            xlink:href="{{ legend_url|escape + '&amp;LAYERS=' + layer }}" />
             </LegendURL>
         </Style>
     </Layer>
