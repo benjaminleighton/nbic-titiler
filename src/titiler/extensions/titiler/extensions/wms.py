@@ -16,8 +16,10 @@ from matplotlib.patches import Patch
 import jinja2
 import numpy
 import rasterio
+import pyproj
 from fastapi import Depends, HTTPException
 from rasterio.crs import CRS
+import rasterio.warp
 from rio_tiler.mosaic import mosaic_reader
 from rio_tiler.mosaic.methods.base import MosaicMethodBase
 from starlette.requests import Request
@@ -67,7 +69,7 @@ class OverlayMethod(MosaicMethodBase):
 class wmsExtension(FactoryExtension):
     """Add /wms endpoint to a TilerFactory."""
 
-    supported_crs: List[str] = field(default_factory=lambda: ["EPSG:4326"])
+    supported_crs: List[str] = field(default_factory=lambda: ["EPSG:4326", "EPSG:3857"])
     supported_format: List[str] = field(
         default_factory=lambda: [
             "image/png",
@@ -339,6 +341,23 @@ class wmsExtension(FactoryExtension):
                         status_code=400,
                         detail=f"Invalid 'LAYERS' parameter: {inlayers}.",
                     )
+                
+            def get_bounding_box(crs, bbox):
+                # WMS 1.3.0 completely relies on how the CRS is defined
+                # so, if the first axis defined in the CRS is a East-West one, we do nothing
+                # this is because the bounding box is generally defined as [left, bottom, right top]
+                # so, with the East-West axis being the first one, e.g. [LEFT, bottom, RIGHT, top]
+                if pyproj.CRS(crs).axis_info[0].direction == 'east':
+                    pass
+                # otherwise we need to flip the order, to have [BOTTOM, left, TOP, right]
+                else:
+                    bbox = [
+                        bbox[1],
+                        bbox[0],
+                        bbox[3],
+                        bbox[2],
+                    ]
+                return bbox
             # GetMap: Return an image chip
             def get_map_data(req):
                 # Required parameters:
@@ -361,6 +380,7 @@ class wmsExtension(FactoryExtension):
                     "bbox",
                     "width",
                     "height",
+                    "crs"
                 }
 
                 intrs = set(req.keys()).intersection(req_keys)
@@ -398,22 +418,7 @@ class wmsExtension(FactoryExtension):
                         detail=f"Invalid 'BBOX' parameters: {req['bbox']}. Needs 4 coordinates separated by commas",
                     )
 
-                if version == "1.3.0":
-                    # WMS 1.3.0 is lame and flips the coords of EPSG:4326
-                    # EPSG:4326 refers to WGS 84 geographic latitude, then longitude.
-                    # That is, in this CRS the x axis corresponds to latitude, and the y axis to longitude.
-                    if crs == CRS.from_epsg(4326):
-                        bbox = [
-                            bbox[1],
-                            bbox[0],
-                            bbox[3],
-                            bbox[2],
-                        ]
-
-                    # Overwrite CRS:84 with EPSG:4326 when specified
-                    # “CRS:84” refers to WGS 84 geographic longitude and latitude expressed in decimal degrees
-                    elif crs == CRS.from_user_input("CRS:84"):
-                        crs = CRS.from_epsg(4326)
+                bbox = get_bounding_box(crs, bbox)
 
                 if transparent := req.get("transparent", False):
                     if str(transparent).lower() == "true":
@@ -438,6 +443,8 @@ class wmsExtension(FactoryExtension):
                     format = ImageType(WMSMediaType(req["format"]).name)
 
                 height, width = int(req["height"]), int(req["width"])
+                # raise RuntimeError
+
 
                 def _reader(src_path: str):
                     with rasterio.Env(**env):
@@ -697,10 +704,33 @@ class wmsExtension(FactoryExtension):
                     with rasterio.Env(**env):
                         with factory.reader(layer, **reader_params) as src_dst:
                             if src_dst.crs is None:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:4326"
+                                layer_crs = f"EPSG:4326"
                             else:
-                                layers_dict[layer_encoded]["srs"] = f"EPSG:{src_dst.crs.to_epsg()}"
-                            layers_dict[layer_encoded]["bounds"] = src_dst.bounds
+                                try:
+                                    layer_crs = f"EPSG:{src_dst.crs.to_epsg()}"
+                                except:
+                                    layer_crs = src_dst.crs.to_string()
+
+                            layers_dict[layer_encoded]['CRSs'] = {}
+                            layers_dict[layer_encoded]['CRSs'][layer_crs] = get_bounding_box(layer_crs, src_dst.bounds)
+                            # print(src_dst)
+                            # raise RuntimeError(src_dst)
+
+                            for crs in self.supported_crs:
+                                if crs == layer_crs:
+                                    continue
+                                layers_dict[layer_encoded]['CRSs'][crs] = get_bounding_box(
+                                    crs, 
+                                    rasterio.warp.transform_bounds(
+                                        layer_crs,
+                                        crs,
+                                        *src_dst.bounds
+                                    )
+                                )
+
+                            # self.supported_crs.append(f"EPSG:{src_dst.crs.to_epsg()}")
+
+                            # layers_dict[layer_encoded]["bounds"] = src_dst.bounds
                             layers_dict[layer_encoded][
                                 "bounds_wgs84"
                             ] = src_dst.geographic_bounds
@@ -722,7 +752,7 @@ class wmsExtension(FactoryExtension):
                         "request_url": wms_url,
                         "legend_url":legend_url,
                         "formats": self.supported_format,
-                        "available_epsgs": self.supported_crs,
+                        "available_epsgs": layers_dict[layer_encoded]['CRSs'],
                         "layers_dict": layers_dict,
                         "service_dict": {
                             "xmin": min(minx),

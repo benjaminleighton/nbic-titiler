@@ -59,8 +59,7 @@
     <Title>TiTiler WMS</Title>
     <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
     
-    <CRS>{{dataset_crs}}</CRS>
-    {% for crs in available_epsgs %}
+    {% for crs in available_epsgs.keys() %}
     <CRS>{{crs}}</CRS>
     {% endfor %}
     
@@ -71,11 +70,10 @@
         <northBoundLatitude>{{service_dict['ymax']}}</northBoundLatitude>
     </EX_GeographicBoundingBox>
     
-    <BoundingBox CRS="CRS:84" minx="{{service_dict['ymin']}}" miny="{{service_dict['xmin']}}" maxx="{{service_dict['ymax']}}" maxy="{{service_dict['xmax']}}" />
-    <BoundingBox CRS="EPSG:4326" minx="{{service_dict['xmin']}}" miny="{{service_dict['ymin']}}" maxx="{{service_dict['xmax']}}" maxy="{{service_dict['ymax']}}" />
+    {% for crs in available_epsgs.keys() %}
+    <BoundingBox CRS="{{crs}}" minx="{{available_epsgs[crs][0]}}" miny="{{available_epsgs[crs][1]}}" maxx="{{available_epsgs[crs][2]}}" maxy="{{available_epsgs[crs][3]}}" />
+    {% endfor %}
     <Style>
-      <Name>default</Name>
-      <Title>default</Title>
       <LegendURL width="300" height="500">
         <Format>image/png</Format>
         <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -88,7 +86,7 @@
         <Name>{{layer}}</Name>
         <Title>{{layers_dict[layer]['title']}}</Title>
         <Abstract>{{layers_dict[layer]['abstract']}}</Abstract>
-        {% for crs in available_epsgs %}
+        {% for crs in available_epsgs.keys() %}
         <CRS>{{crs}}</CRS>
         {% endfor %}
         <EX_GeographicBoundingBox>
@@ -97,9 +95,13 @@
             <southBoundLatitude>{{layers_dict[layer]['bounds_wgs84'][1]}}</southBoundLatitude>
             <northBoundLatitude>{{layers_dict[layer]['bounds_wgs84'][3]}}</northBoundLatitude>
         </EX_GeographicBoundingBox>
-        <BoundingBox CRS="CRS:84" minx="{{layers_dict[layer]['bounds_wgs84'][0]}}" miny="{{layers_dict[layer]['bounds_wgs84'][1]}}" maxx="{{layers_dict[layer]['bounds_wgs84'][2]}}" maxy="{{layers_dict[layer]['bounds_wgs84'][3]}}"/>
-        <BoundingBox CRS="{{layers_dict[layer]['srs']}}" minx="{{layers_dict[layer]['bounds'][1]}}" miny="{{layers_dict[layer]['bounds'][0]}}" maxx="{{layers_dict[layer]['bounds'][3]}}" maxy="{{layers_dict[layer]['bounds'][2]}}"/>
+
+        {% for crs in available_epsgs.keys() %}
+        <BoundingBox CRS="{{crs}}" minx="{{available_epsgs[crs][0]}}" miny="{{available_epsgs[crs][1]}}" maxx="{{available_epsgs[crs][2]}}" maxy="{{available_epsgs[crs][3]}}" />
+        {% endfor %}
         <Style>
+          <Name>default</Name>
+          <Title>default</Title>
           <LegendURL width="300" height="500">
             <Format>image/png</Format>
             <OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink"
