@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Capabilities version="2.0.1"
+  xmlns="http://www.opengis.net/wcs/2.0"
+  xmlns:ows="http://www.opengis.net/ows/2.0"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
+  <ows:ServiceIdentification>
+    <ows:Title>NBIC WCS powered by TiTiler</ows:Title>
+    <ows:Abstract>Serverless WCS to serve NBIC data</ows:Abstract>
+    <ows:ServiceType codeSpace="OGC">WCS</ows:ServiceType>
+    <ows:ServiceTypeVersion>2.0.1</ows:ServiceTypeVersion>
+    <ows:Fees>NONE</ows:Fees>
+    <ows:AccessConstraints>NONE</ows:AccessConstraints>
+  </ows:ServiceIdentification>
+
+  <ows:ServiceProvider>
+    <ows:ProviderName>CSIRO</ows:ProviderName>
+    <ows:ProviderSite xlink:href="https://research.csiro.au/nbic/"/>
+    <ows:ServiceContact>
+      <ows:IndividualName>National Bushfire Intelligence Capability</ows:IndividualName>
+
+    </ows:ServiceContact>
+  </ows:ServiceProvider>
+
+  <ows:OperationsMetadata>
+    <!-- Provide actual endpoints for GetCapabilities, DescribeCoverage, GetCoverage -->
+    <ows:Operation name="GetCapabilities">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:href="{{ request_url|escape }}"/>
+          <ows:Post xlink:href="{{ request_url|escape }}"/>
+        </ows:HTTP>
+      </ows:DCP>
+    </ows:Operation>
+    <ows:Operation name="DescribeCoverage">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:href="{{ request_url|escape }}"/>
+          <ows:Post xlink:href="{{ request_url|escape }}"/>
+        </ows:HTTP>
+      </ows:DCP>
+    </ows:Operation>
+    <ows:Operation name="GetCoverage">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:href="{{ request_url|escape }}"/>
+          <ows:Post xlink:href="{{ request_url|escape }}"/>
+        </ows:HTTP>
+      </ows:DCP>
+    </ows:Operation>
+  </ows:OperationsMetadata>
+
+  <ServiceMetadata>
+    {% for format in formats %}
+    <formatSupported>{{ format }}</formatSupported>
+    {% endfor %}
+    <Extension>
+      <CrsMetadata>
+        {% for crs in available_epsgs %}
+        <crsSupported>{{crs}}</crsSupported>
+        {% endfor %}
+      </CrsMetadata>
+    </Extension>
+  </ServiceMetadata>
+
+  <Contents>
+    <!-- For each coverage, you can list coverage id, bounding box, etc. -->
+    {% for cov_id, cov_info in coverages.items() %}
+    <CoverageSummary>
+      <ows:Title>{{ cov_id }}</ows:Title>
+      <ows:WGS84BoundingBox dimension="2">
+        <ows:LowerCorner>{{ cov_info["bounds_wgs84"][0] }} {{ cov_info["bounds_wgs84"][1] }}</ows:LowerCorner>
+        <ows:UpperCorner>{{ cov_info["bounds_wgs84"][2] }} {{ cov_info["bounds_wgs84"][3] }}</ows:UpperCorner>
+      </ows:WGS84BoundingBox>
+      <CoverageId>{{ cov_info['layer'] }}</CoverageId>
+    </CoverageSummary>
+    {% endfor %}
+  </Contents>
+</Capabilities>

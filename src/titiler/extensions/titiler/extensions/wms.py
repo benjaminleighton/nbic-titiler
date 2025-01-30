@@ -244,16 +244,7 @@ class wmsExtension(FactoryExtension):
                         "name": "TRANSPARENT",
                         "in": "query",
                     },
-                    # {
-                    #     "required": False,
-                    #     "schema": {
-                    #         "title": "Hexadecimal red-green-blue colour value for the background color (default=FFFFFF).",
-                    #         "type": "string",
-                    #         "default": "FFFFFF",
-                    #     },
-                    #     "name": "BGCOLOR",
-                    #     "in": "query",
-                    # },
+
                     {
                         "required": False,
                         "schema": {
@@ -264,24 +255,6 @@ class wmsExtension(FactoryExtension):
                         "name": "EXCEPTIONS",
                         "in": "query",
                     },
-                    # {
-                    #     "required": False,
-                    #     "schema": {
-                    #         "title": "Time value of layer desired.",
-                    #         "type": "string",
-                    #     },
-                    #     "name": "TIME",
-                    #     "in": "query",
-                    # },
-                    # {
-                    #     "required": False,
-                    #     "schema": {
-                    #         "title": "Elevation of layer desired.",
-                    #         "type": "string",
-                    #     },
-                    #     "name": "ELEVATION",
-                    #     "in": "query",
-                    # },
                 ]
             },
         )

@@ -38,6 +38,11 @@ from titiler.mosaic.errors import MOSAIC_STATUS_CODES
 from titiler.mosaic.factory import MosaicTilerFactory
 
 from titiler.application.dependencies import ColorMapParams
+from titiler.extensions import wcsExtension
+
+# from dependencies import ColorMapParams
+# import sys; sys.path.append('src/titiler/extensions/titiler/')
+# from extensions import wcsExtension
 
 logging.getLogger("botocore.credentials").disabled = True
 logging.getLogger("botocore.utils").disabled = True
@@ -88,6 +93,7 @@ if not api_settings.disable_cog:
             cogViewerExtension(),
             stacExtension(),
             wmsExtension(),
+            wcsExtension(),
         ],
     )
 

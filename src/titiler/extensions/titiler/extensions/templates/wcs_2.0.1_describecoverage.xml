@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wcs:CoverageDescriptions xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+  xmlns='http://www.opengis.net/gml/3.2'
+  xmlns:gml='http://www.opengis.net/gml/3.2'
+  xmlns:gmlcov='http://www.opengis.net/gmlcov/1.0'
+  xmlns:swe='http://www.opengis.net/swe/2.0'
+  xsi:schemaLocation='http://schemas.opengis.net/swe/2.0
+    http://schemas.opengis.net/sweCommon/2.0/swe.xsd
+    http://www.opengis.net/wcs/2.0 http://www.opengis.net/wcs/2.0/wcsAll.xsd'
+  xmlns:wcs='http://www.opengis.net/wcs/2.0'>
+  {% for cov_id, cov_info in coverages.items() %}
+  <wcs:CoverageDescription gml:id="{{ cov_info['layer'] }}">
+    <gml:description>{{ cov_id }}</gml:description>
+    <gml:name>{{ cov_id }}</gml:name>
+    <gml:boundedBy>
+      <gml:Envelope srsName="{{ cov_info['crs'] }}"
+        axisLabels="{{ cov_info['axis_labels'][0] }} {{ cov_info['axis_labels'][1] }}" uomLabels="{{ cov_info['axis_units'][0] }} {{ cov_info['axis_units'][1] }}" srsDimension="2">
+        <gml:lowerCorner>{{ cov_info['lower_corner'][0] }} {{ cov_info['lower_corner'][1] }}</gml:lowerCorner>
+        <gml:upperCorner>{{ cov_info['upper_corner'][0] }} {{ cov_info['upper_corner'][1] }}</gml:upperCorner>
+      </gml:Envelope>
+    </gml:boundedBy>
+    <wcs:CoverageId>{{ cov_info['layer'] }}</wcs:CoverageId>
+
+    <domainSet>
+      <Grid gml:id="{{ cov_info['layer'] }}" dimension="2" srsName="{{ cov_info['crs'] }}">
+        <limits>
+          <GridLimits>
+            <low> 0 0</low>
+            <high> {{ cov_info['axis_shape'][0] }} {{ cov_info['axis_shape'][1] }}</high>
+          </GridLimits>
+        </limits>
+        <axisLabels> {{ cov_info['axis_labels'][0] }} {{ cov_info['axis_labels'][1] }}</axisLabels>
+      </Grid>
+    </domainSet>
+
+    <gmlcov:rangeType>
+      <swe:DataRecord > 
+        <swe:field name="Band_1">
+          <swe:Quantity>
+            <swe:description>Band_1</swe:description>
+            <swe:nilValues>
+              <swe:NilValues>
+                <swe:nilValue reason="invalid">{{ cov_info['nodata'] }}</swe:nilValue>
+              </swe:NilValues>
+            </swe:nilValues>
+            <swe:uom code="Band_1"/>
+            <swe:constraint>
+              <swe:AllowedValues/>
+            </swe:constraint>
+          </swe:Quantity>
+        </swe:field>
+      </swe:DataRecord>
+    </gmlcov:rangeType>
+
+    <wcs:ServiceParameters>
+      <wcs:CoverageSubtype> RectifiedGridCoverage</wcs:CoverageSubtype>
+      <wcs:nativeFormat> image/geotiff</wcs:nativeFormat>
+    </wcs:ServiceParameters>
+  </wcs:CoverageDescription>
+  {% endfor %}
+</wcs:CoverageDescriptions>
