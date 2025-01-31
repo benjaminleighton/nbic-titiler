@@ -16,10 +16,15 @@
 
     <wcs:domainSet>
       <wcs:spatialDomain>
-        <gml:Envelope srsName="{{ cov_info['crs'] }}"
+        <!-- <gml:Envelope srsName="{{ cov_info['crs'] }}"
           srsDimension="2">
           <gml:pos>{{ cov_info['lower_corner'][0] }} {{ cov_info['lower_corner'][1] }}</gml:pos>
           <gml:pos>{{ cov_info['upper_corner'][0] }} {{ cov_info['upper_corner'][1] }}</gml:pos>
+        </gml:Envelope> -->
+        <gml:Envelope srsName="urn:ogc:def:crs:OGC:1.3:CRS84"
+          srsDimension="2">
+          <gml:pos>{{ cov_info['bounds_wgs84'][0] }} {{ cov_info['bounds_wgs84'][1] }}</gml:pos>
+          <gml:pos>{{ cov_info['bounds_wgs84'][2] }} {{ cov_info['bounds_wgs84'][3] }}</gml:pos>
         </gml:Envelope>
         <gml:RectifiedGrid srsName="{{ cov_info['crs'] }}" dimension="2">
           <gml:limits>
@@ -30,7 +35,7 @@
           </gml:limits>
           <gml:axisName>{{ cov_info['axis_labels'][0] }}</gml:axisName>
           <gml:axisName>{{ cov_info['axis_labels'][1] }}</gml:axisName>
-          <gml:origin srsName="EPSG:3577">
+          <gml:origin srsName="{{ cov_info['crs'] }}">
             <gml:pos>
             {{ cov_info['lower_corner'][0] }} {{ cov_info['lower_corner'][1] }}
             </gml:pos>
