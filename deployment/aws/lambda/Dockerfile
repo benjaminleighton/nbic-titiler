@@ -1,7 +1,8 @@
 ARG PYTHON_VERSION=3.11
 
 FROM --platform=linux/amd64 public.ecr.aws/lambda/python:${PYTHON_VERSION}
-
+# Install required build dependencies
+RUN yum install -y gcc gcc-c++ make
 WORKDIR /tmp
 RUN pip install pip -U
 
@@ -12,7 +13,7 @@ ARG INSTALL_TYPE=prod
 RUN echo "INSTALL_TYPE is set to: $INSTALL_TYPE"
 
 RUN if [ "$INSTALL_TYPE" = "dev" ]; then \
-      pip install /tmp/titiler/extensions['wms, cogeo, stac'] /tmp/titiler/application /tmp/titiler/core /tmp/titiler/mosaic "mangum>=0.10.0" uvicorn -t /asset --no-binary pydantic ; \
+      pip install /tmp/titiler/extensions['wms, cogeo, stac, wcs'] /tmp/titiler/application /tmp/titiler/core /tmp/titiler/mosaic "mangum>=0.10.0" uvicorn -t /asset --no-binary pydantic ; \
     else \
       pip install "titiler.application==0.14.0" "mangum>=0.10.0" -t /asset --no-binary pydantic ; \
     fi
