@@ -1,11 +1,14 @@
 <?xml version='1.0' encoding="UTF-8" standalone="no" ?>
-<WMS_Capabilities version="1.3.0">
+<WMS_Capabilities version="1.3.0"
+  xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
 
 <Service>
   <Name>NBIC WMS powered by TiTiler</Name>
   <Title>NBIC WMS powered by TiTiler</Title>
   <Abstract>COG URLs specified in the "LAYERS" parameter will show up as available layers</Abstract>
-  <OnlineResource xlink:type="simple" xlink:href="https://research.csiro.au/nbic/"/>
+  <!-- <OnlineResource xlink:type="simple" xlink:href="https://research.csiro.au/nbic/"/> -->
   <ContactInformation>
     <ContactPersonPrimary>
       <ContactPerson>National Bushfire Intelligence Capability</ContactPerson>

@@ -133,12 +133,21 @@ class wcsExtension(FactoryExtension):
                         "in": "query",
                     },
                     {
-                        "required": True,
+                        "required": False,
                         "schema": {
                             "title": "Comma-separated coverage IDs",
                             "type": "string",
                         },
                         "name": "COVERAGE",
+                        "in": "query",
+                    },
+                    {
+                        "required": False,
+                        "schema": {
+                            "title": "Other way to specify coverages",
+                            "type": "string",
+                        },
+                        "name": "LAYER",
                         "in": "query",
                     },
                     {
@@ -222,7 +231,7 @@ class wcsExtension(FactoryExtension):
                     status_code=400, detail="Missing WCS parameter 'REQUEST'."
                 )
 
-            layers = req.get("coverage", "").split(",")
+            layers = list(set(req.get("coverage", "").split(",") + req.get("layer", "").split(",")))
 
             # decode b64 encoded paths
             coverage_ids = []
@@ -251,7 +260,7 @@ class wcsExtension(FactoryExtension):
                 wcs_url = factory.url_for(request, "wcs")
 
                 # Remove standard WCS keys from the query string so we can pass the rest along
-                skip_keys = {"service", "request", "coverage", "version", "format"}
+                skip_keys = {"service", "request", "coverage", "layer", "version", "format"}
                 qs = [
                     (key, value)
                     for (key, value) in request.query_params._list
@@ -438,6 +447,7 @@ class wcsExtension(FactoryExtension):
                         detail="Missing 'BBOX' parameter in GetCoverage.",
                     )
                 bbox_str = req["bbox"]
+                print(bbox_str)
 
                 try:
                     bbox = list(map(float, bbox_str.split(",")))
@@ -450,6 +460,8 @@ class wcsExtension(FactoryExtension):
                         status_code=400,
                         detail=f"Invalid BBOX: {bbox_str}",
                     )
+
+                print(bbox)
 
                 width = int(req.get("width", 256))
                 height = int(req.get("height", 256))
